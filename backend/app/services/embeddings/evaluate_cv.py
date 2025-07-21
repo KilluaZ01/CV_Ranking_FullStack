@@ -1,0 +1,89 @@
+from app.services.embeddings.embedding_utils import compute_similarity
+from datetime import datetime
+
+# ---------- Normalizers ----------
+
+def normalize_education(text):
+    text = text.lower()
+    if "bachelor" in text or "b.sc" in text or "bachelors" in text:
+        return "bachelor"
+    if "master" in text or "m.sc" in text or "msc" in text:
+        return "master"
+    if "phd" in text or "doctorate" in text:
+        return "phd"
+    return text
+
+def normalize_title(title):
+    synonyms = {
+        "software developer": "software engineer",
+        "backend dev": "software engineer",
+        "data scientist": "data analyst",
+        "bsc": "bachelor",
+        "msc": "master",
+        "cto": "chief technology officer"
+    }
+    title = title.lower()
+    return synonyms.get(title, title)
+
+# ---------- Similarity helpers ----------
+
+def list_similarity(list1, list2):
+    set1, set2 = set(map(str.lower, list1)), set(map(str.lower, list2))
+    if not set1 or not set2:
+        return 0.0
+    return len(set1 & set2) / len(set1 | set2)
+
+def recency_boost(start_year):
+    now = datetime.now().year
+    delta = now - start_year
+    return max(1.0 - (delta / 10.0), 0.0)
+
+def experience_score(cv_roles, jd_title, jd_skills, jd_industry):
+    now = datetime.now().year
+    best_score = 0
+
+    for role in cv_roles:
+        role_title = normalize_title(role.get("title", ""))
+        role_industry = role.get("industry", "")
+        role_skills = role.get("skills", [])
+        start_year = role.get("start_year", now - 1)
+
+        title_score = compute_similarity(role_title, jd_title)
+        industry_score = compute_similarity(role_industry, jd_industry or "")
+        skills_score = list_similarity(role_skills, jd_skills)
+        years_exp = now - start_year
+        exp_score = min(years_exp / 5.0, 1.0)
+        recent_bonus = recency_boost(start_year)
+
+        total = (
+            0.4 * title_score +
+            0.2 * industry_score +
+            0.2 * skills_score +
+            0.1 * exp_score +
+            0.1 * recent_bonus
+        )
+
+        best_score = max(best_score, total)
+
+    return round(best_score, 2)
+
+# ---------- Main evaluation function ----------
+
+def evaluate_cv(jd_cleaned, cv):
+    jd_title = normalize_title(jd_cleaned.get("title", ""))
+    jd_skills = jd_cleaned.get("skills", [])
+    jd_education = normalize_education(jd_cleaned.get("education", ""))
+    jd_industry = jd_cleaned.get("industry", "")
+
+    cv_skills = cv.get("skills", [])
+    cv_education = normalize_education(cv.get("education", ""))
+    cv_experience = cv.get("experience", [])
+
+    return {
+        "name": cv.get("name", "Unnamed"),
+        "similarities": {
+            "skills": round(list_similarity(cv_skills, jd_skills), 2),
+            "experience": experience_score(cv_experience, jd_title, jd_skills, jd_industry),
+            "education": round(compute_similarity(cv_education, jd_education), 2)
+        }
+    }

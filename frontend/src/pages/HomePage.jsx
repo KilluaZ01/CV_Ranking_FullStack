@@ -1,8 +1,7 @@
-// pages/HomePage.jsx
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Job_Description from "../components/Job_Description";
-import Cv_Postings from "../components/Cv_Postings";
+import CvPostings from "../components/Cv_Postings";  // updated import
 import Sidebar from "../components/Sidebar";
 
 const HomePage = () => {
@@ -37,22 +36,34 @@ const HomePage = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f9f9fb] font-sans">
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-y-auto">
-          <div className="grid grid-cols-2 gap-6">
+    <div className="flex min-h-screen bg-[#f1faee] font-sans">
+      <Sidebar />
+
+      <div className="flex flex-col flex-1 p-6 max-h-screen">
+        {/* Two separate boxes side by side */}
+        <div
+          className="flex flex-1 min-h-0 gap-6"
+          style={{ height: "calc(100vh - 96px)" }} // Adjust height as needed
+        >
+          {/* Job Description box */}
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto rounded-lg border-4 border-[#a8dadc] bg-white shadow-lg p-6">
             <Job_Description ref={jobRef} />
-            <Cv_Postings ref={cvRef} />
           </div>
-          <div className=" text-white p-4 text-center mt-6 rounded">
-            <button
-              className="px-6 py-2 bg-pink-500 hover:bg-pink-600 rounded text-sm font-semibold"
-              onClick={handleCompare}
-            >
-              Start Comparing
-            </button>
+
+          {/* CV Postings box */}
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto rounded-lg border-4 border-[#a8dadc] bg-white shadow-lg p-6">
+            <CvPostings ref={cvRef} />
           </div>
+        </div>
+
+        {/* Compare Button below the boxes */}
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={handleCompare}
+            className="px-8 py-3 bg-[#e63946] hover:bg-[#d62839] text-white font-semibold rounded-2xl shadow-md transition-all duration-300"
+          >
+            Start Comparing
+          </button>
         </div>
       </div>
     </div>

@@ -5,20 +5,21 @@ import { useNavigate, useLocation } from "react-router-dom";
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
   const currentPath = location.pathname;
 
   return (
-    <aside className="w-64 bg-white p-6 flex flex-col shadow-lg">
+    <aside className="w-64 min-h-screen bg-[#f1faee] shadow-xl p-6 flex flex-col border-r-4 border-[#a8dadc]">
+      {/* User Avatar + Name */}
       <div className="flex items-center mb-8">
         <img
           src="https://i.pravatar.cc/42"
           alt="Avatar"
-          className="w-12 h-12 rounded-full mr-3 border-2 border-pink-200"
+          className="w-12 h-12 rounded-full border-2 border-[#e63946] mr-3"
         />
-        <span className="font-semibold text-gray-800 text-lg">Zidan Rai</span>
+        <span className="font-semibold text-[#1d3557] text-lg">Zidan Rai</span>
       </div>
 
+      {/* Navigation Items */}
       <nav className="flex-1 space-y-3 text-sm">
         <NavItem
           icon="mdi:folder"
@@ -46,17 +47,19 @@ const Sidebar = () => {
         />
       </nav>
 
+      {/* CTA Button */}
       <button
         onClick={() => navigate("/new-project")}
-        className="mt-auto py-2 px-4 bg-pink-600 hover:bg-pink-700 text-white rounded-lg shadow-md transition duration-200"
+        className="mt-auto py-2 px-4 bg-[#e63946] hover:bg-[#c72f3f] text-white font-semibold rounded-xl shadow transition duration-200"
       >
         + New Project
       </button>
 
-      <div className="mt-6 text-xs text-gray-500 space-y-2">
-        <p className="hover:text-pink-600 cursor-pointer">How it works</p>
-        <p className="hover:text-pink-600 cursor-pointer">Features</p>
-        <p className="hover:text-pink-600 cursor-pointer">FAQs</p>
+      {/* Footer Links */}
+      <div className="mt-6 text-xs text-[#1d3557] space-y-2">
+        <p className="hover:text-[#e63946] cursor-pointer transition">How it works</p>
+        <p className="hover:text-[#e63946] cursor-pointer transition">Features</p>
+        <p className="hover:text-[#e63946] cursor-pointer transition">FAQs</p>
       </div>
     </aside>
   );
@@ -65,10 +68,10 @@ const Sidebar = () => {
 const NavItem = ({ icon, label, active, onClick }) => (
   <div
     onClick={onClick}
-    className={`flex items-center px-4 py-2 rounded-lg cursor-pointer text-sm transition duration-150 ${
+    className={`flex items-center px-4 py-2 rounded-lg cursor-pointer text-sm font-medium transition duration-150 ${
       active
-        ? "bg-pink-500 text-white font-semibold shadow-sm"
-        : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+        ? "bg-[#457b9d] text-white shadow-sm"
+        : "text-[#1d3557] hover:bg-[#a8dadc] hover:text-[#1d3557]"
     }`}
   >
     <Icon icon={icon} className="mr-3 text-xl" />

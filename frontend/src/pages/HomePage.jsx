@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Job_Description from "../components/Job_Description";
-import CvPostings from "../components/Cv_Postings";  // updated import
+import CvPostings from "../components/Cv_Postings";
 import Sidebar from "../components/Sidebar";
 
 const HomePage = () => {
@@ -36,31 +36,28 @@ const HomePage = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f1faee] font-sans">
+    <div className="flex h-screen w-full bg-[#f1faee] font-sans overflow-hidden">
       <Sidebar />
 
-      <div className="flex flex-col flex-1 p-6 max-h-screen">
-        {/* Two separate boxes side by side */}
-        <div
-          className="flex flex-1 min-h-0 gap-6"
-          style={{ height: "calc(100vh - 96px)" }} // Adjust height as needed
-        >
-          {/* Job Description box */}
-          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto rounded-lg border-4 border-[#a8dadc] bg-white shadow-lg p-6">
+      <div className="flex flex-col flex-1 p-4 md:p-6">
+        {/* Boxes layout */}
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 flex-1 overflow-hidden">
+          {/* Job Description Box */}
+          <div className="flex flex-col flex-1 overflow-y-auto border-4 border-[#a8dadc] bg-white rounded-2xl shadow-md p-4 md:p-6">
             <Job_Description ref={jobRef} />
           </div>
 
-          {/* CV Postings box */}
-          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto rounded-lg border-4 border-[#a8dadc] bg-white shadow-lg p-6">
+          {/* CV Postings Box */}
+          <div className="flex flex-col flex-1 overflow-y-auto border-4 border-[#a8dadc] bg-white rounded-2xl shadow-md p-4 md:p-6">
             <CvPostings ref={cvRef} />
           </div>
         </div>
 
-        {/* Compare Button below the boxes */}
-        <div className="mt-6 flex justify-center">
+        {/* Compare Button */}
+        <div className="mt-4 md:mt-6 flex justify-center">
           <button
             onClick={handleCompare}
-            className="px-8 py-3 bg-[#e63946] hover:bg-[#d62839] text-white font-semibold rounded-2xl shadow-md transition-all duration-300"
+            className="px-6 py-3 bg-[#e63946] hover:bg-[#d62839] text-white font-semibold rounded-2xl shadow-md transition duration-300"
           >
             Start Comparing
           </button>

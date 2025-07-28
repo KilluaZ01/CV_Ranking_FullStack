@@ -1,8 +1,7 @@
-// pages/HomePage.jsx
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Job_Description from "../components/Job_Description";
-import Cv_Postings from "../components/Cv_Postings";
+import CvPostings from "../components/Cv_Postings";
 import Sidebar from "../components/Sidebar";
 
 const HomePage = () => {
@@ -37,22 +36,31 @@ const HomePage = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f9f9fb] font-sans">
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-y-auto">
-          <div className="grid grid-cols-2 gap-6">
+    <div className="flex h-screen w-full bg-[#f1faee] font-sans overflow-hidden">
+      <Sidebar />
+
+      <div className="flex flex-col flex-1 p-4 md:p-6">
+        {/* Boxes layout */}
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 flex-1 overflow-hidden">
+          {/* Job Description Box */}
+          <div className="flex flex-col flex-1 overflow-y-auto border-4 border-[#a8dadc] bg-white rounded-2xl shadow-md p-4 md:p-6">
             <Job_Description ref={jobRef} />
-            <Cv_Postings ref={cvRef} />
           </div>
-          <div className=" text-white p-4 text-center mt-6 rounded">
-            <button
-              className="px-6 py-2 bg-pink-500 hover:bg-pink-600 rounded text-sm font-semibold"
-              onClick={handleCompare}
-            >
-              Start Comparing
-            </button>
+
+          {/* CV Postings Box */}
+          <div className="flex flex-col flex-1 overflow-y-auto border-4 border-[#a8dadc] bg-white rounded-2xl shadow-md p-4 md:p-6">
+            <CvPostings ref={cvRef} />
           </div>
+        </div>
+
+        {/* Compare Button */}
+        <div className="mt-4 md:mt-6 flex justify-center">
+          <button
+            onClick={handleCompare}
+            className="px-6 py-3 bg-[#e63946] hover:bg-[#d62839] text-white font-semibold rounded-2xl shadow-md transition duration-300"
+          >
+            Start Comparing
+          </button>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 from app.services.embeddings.evaluate_cv import evaluate_cv
+from app.utils.skill_matcher import match_skills
 
 def generate_scored_output(jd_cleaned, cvs_cleaned, weights=None):
     if weights is None:

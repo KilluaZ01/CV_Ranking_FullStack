@@ -3,3 +3,7 @@ uvicorn
 python-multipart
 aiofiles
 python-dotenv
+pdfplumber
+google.generativeai
+sentence_transformers
+rapidfuzz

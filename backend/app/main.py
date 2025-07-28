@@ -1,85 +1,104 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
-import os, uuid, json, shutil
-from app.services.pipeline import run_pipeline  # You’ll create this
-from fastapi import Depends
-from sqlalchemy.orm import Session as OrmSession
-from fastapi.responses import JSONResponse
-from app.models.models import Session as SessionModel
-from app.models.database import SessionLocal, Base, engine
-
-Base.metadata.create_all(bind=engine)
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+import os
+import uuid
+import json
+from sqlalchemy.orm import Session
 
 app = FastAPI()
 
-UPLOAD_DIR = "storage/uploads"
-SESSION_DIR = "storage"
-
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
+# CORS setup to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # frontend origin
+    allow_origins=["*"],  # For dev, restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+UPLOAD_DIR = "./uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Dummy DB session dependency and models placeholders
+def get_db():
+    # return your db session here
+    pass
+
 @app.post("/compare")
-async def compare_upload(
-    job_description: str = Form(...),
-    pdfs: List[UploadFile] = File(...),
-    db: OrmSession = Depends(get_db)
-):
+async def compare(job_description: str = Form(...), pdfs: list[UploadFile] = File(...)):
     session_id = str(uuid.uuid4())
-    session_path = os.path.join(UPLOAD_DIR, session_id)
-    os.makedirs(session_path, exist_ok=True)
+    saved_files = []
+    results = {"scored": []}
 
-    pdf_paths = []
-    for file in pdfs:
-        file_path = os.path.join(session_path, file.filename)
+    # Save uploaded files
+    for pdf in pdfs:
+        cv_id = str(uuid.uuid4())
+        file_path = os.path.join(UPLOAD_DIR, f"{cv_id}.pdf")
         with open(file_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-        pdf_paths.append(file_path)
+            f.write(await pdf.read())
+        # Dummy scoring and extraction logic here
+        results["scored"].append({
+            "cv_id": cv_id,
+            "name": pdf.filename,
+            "total_score": 0.75,  # Dummy score
+            "cv_text": "Extracted text here...",
+            "matched_keywords": ["Python", "Flask"],
+            "matched_summary": "Matched on: Python, Flask"
+        })
 
-    # 🔁 Run pipeline immediately
-    results = run_pipeline(job_description, pdf_paths)
+    # Save session info to DB (mock)
+    # session = SessionModel(id=session_id, results=json.dumps(results))
+    # db.add(session)
+    # db.commit()
 
-    # 💾 Save JSON results
-    with open(os.path.join(SESSION_DIR, f"{session_id}.json"), "w", encoding="utf-8") as f:
-        json.dump({
-            "job_description": job_description,
-            "pdf_paths": pdf_paths,
-            "results": results
-        }, f, ensure_ascii=False, indent=2)
-
-    # 💾 Save metadata to DB
-    db_record = SessionModel(
-        id=session_id,
-        job_description=job_description,
-        pdf_paths=pdf_paths,
-        results=results
-    )
-    db.add(db_record)
-    db.commit()
+    # For demo, just save json to file (optional)
+    with open(f"./results_{session_id}.json", "w") as f:
+        json.dump(results, f)
 
     return {"session_id": session_id}
 
+
 @app.get("/get_results")
-async def get_results(session_id: str, db: OrmSession = Depends(get_db)):
-    db_session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
-    if not db_session:
+def get_results(session_id: str):
+    # Retrieve results from DB or file
+    try:
+        with open(f"./results_{session_id}.json", "r") as f:
+            results = json.load(f)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Session results not found")
+    return {"results": results}
+
+
+@app.get("/get_pdf/{cv_id}")
+def get_pdf(cv_id: str):
+    file_path = os.path.join(UPLOAD_DIR, f"{cv_id}.pdf")
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type='application/pdf')
+    raise HTTPException(status_code=404, detail="PDF not found")
+
+
+@app.delete("/delete_cv/{session_id}/{cv_id}")
+def delete_cv(session_id: str, cv_id: str):
+    # Load results from file (or DB)
+    try:
+        with open(f"./results_{session_id}.json", "r") as f:
+            results = json.load(f)
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    if not db_session.results:
-        raise HTTPException(status_code=404, detail="Results not found for this session")
+    # Filter out deleted CV
+    updated_scored = [cv for cv in results.get("scored", []) if cv.get("cv_id") != cv_id]
+    results["scored"] = updated_scored
 
-    return JSONResponse(content={"results": db_session.results})
+    # Save updated results
+    with open(f"./results_{session_id}.json", "w") as f:
+        json.dump(results, f)
+
+    # Delete file
+    try:
+        os.remove(os.path.join(UPLOAD_DIR, f"{cv_id}.pdf"))
+    except FileNotFoundError:
+        pass
+
+    return {"status": "deleted"}

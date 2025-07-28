@@ -1,0 +1,6 @@
+Found issue in semantic and fuzzy areas. Like how scikit-learn and scikit learn are the same thing but are treated as different.
+Like Flask and flask are treated as different.
+
+Another issue is in the bachelor field. Most of the cv have bachlor in computer science, ai and related field. 
+But if the cv were to come from agriculture backgorun the issue would be that it will give the full score to the cv despite 
+coming from a different background.

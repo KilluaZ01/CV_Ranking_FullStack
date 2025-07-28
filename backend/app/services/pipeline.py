@@ -49,7 +49,9 @@ You are a professional parser. Given a job description and a resume, return a st
           "title": "<Job Title>",
           "industry": "<Industry>",
           "skills": [<skills used>],
-          "start_year": <start year as integer>
+          "start_year": <start year as integer>,
+          "end_year" = 2025 if "2025" in date_string else datetime.now().year,
+          "duration":<end year - start year>
         }}
       ]
     }}
@@ -85,7 +87,7 @@ Resume:
         }
 
 import uuid
-
+resume_texts = {}
 def run_pipeline(job_description: str, pdf_paths: list[str]):
     all_cvs = []
     jd_data = {}
@@ -96,6 +98,10 @@ def run_pipeline(job_description: str, pdf_paths: list[str]):
                 file_bytes = f.read()
 
             resume_text = extract_text_from_pdf_file(file_bytes)
+
+            # filename = os.path.basename(pdf_path)                 # ✅ [ADDED] Use filename as key
+            # resume_texts[filename] = resume_text
+
             parsed = analyze_jd_and_resume(job_description, resume_text)
 
             # Extract just the filename for reference
@@ -123,6 +129,8 @@ def run_pipeline(job_description: str, pdf_paths: list[str]):
                 "text": "",
                 "sections": {}
             })
+    # with open("resume_texts.json", "w", encoding="utf-8") as f:
+    #     json.dump(resume_texts, f, ensure_ascii=False, indent=2)
 
     scored_output = generate_scored_output(jd_data, all_cvs)
 

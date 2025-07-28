@@ -82,8 +82,25 @@ def evaluate_cv(jd_cleaned, cv):
     return {
         "name": cv.get("name", "Unnamed"),
         "similarities": {
-            "skills": round(list_similarity(cv_skills, jd_skills), 2),
+            "skills": round(semantic_skill_score(jd_skills, cv_skills), 2),
             "experience": experience_score(cv_experience, jd_title, jd_skills, jd_industry),
             "education": round(compute_similarity(cv_education, jd_education), 2)
         }
     }
+def semantic_skill_score(jd_skills, cv_skills):
+    if not jd_skills or not cv_skills:
+        return 0.0
+
+    jd_skills = list(set(map(str.lower, jd_skills)))
+    cv_skills = list(set(map(str.lower, cv_skills)))
+
+    total = 0.0
+    for jd_skill in jd_skills:
+        best_match = 0.0
+        for cv_skill in cv_skills:
+            sim = compute_similarity(jd_skill, cv_skill)
+            if sim > best_match:
+                best_match = sim
+        total += best_match
+
+    return total / len(jd_skills)

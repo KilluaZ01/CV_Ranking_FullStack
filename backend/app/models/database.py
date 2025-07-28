@@ -1,6 +1,9 @@
-# database.py
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+
+# Ensure 'storage' directory exists
+os.makedirs("storage", exist_ok=True)
 
 DATABASE_URL = "sqlite:///./storage/db.sqlite3"
 

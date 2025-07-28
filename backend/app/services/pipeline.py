@@ -62,8 +62,9 @@ You are a professional parser. Given a job description and a resume, return a st
           "industry": "<Industry>",
           "skills": [<skills used>],
           "start_year": <start year as integer>,
-          "end_year": 2025 if "2025" in date_string else datetime.now().year,
-          "duration": <end year - start year>
+
+          "end_year" = 2025 if "2025" in date_string else datetime.now().year,
+          "duration":<end year - start year>
         }}
       ]
     }}

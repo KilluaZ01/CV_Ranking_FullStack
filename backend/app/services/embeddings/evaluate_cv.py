@@ -113,7 +113,6 @@ def evaluate_education(jd_education, cv_education_list):
     return best_score
 
 # ---------- Semantic skill score ----------
-
 def semantic_skill_score(jd_skills, cv_skills):
     if not jd_skills or not cv_skills:
         return 0.0
@@ -153,20 +152,3 @@ def evaluate_cv(jd_cleaned, cv):
             "education": round(education_score, 2)
         }
     }
-def semantic_skill_score(jd_skills, cv_skills):
-    if not jd_skills or not cv_skills:
-        return 0.0
-
-    jd_skills = list(set(map(str.lower, jd_skills)))
-    cv_skills = list(set(map(str.lower, cv_skills)))
-
-    total = 0.0
-    for jd_skill in jd_skills:
-        best_match = 0.0
-        for cv_skill in cv_skills:
-            sim = compute_similarity(jd_skill, cv_skill)
-            if sim > best_match:
-                best_match = sim
-        total += best_match
-
-    return total / len(jd_skills)

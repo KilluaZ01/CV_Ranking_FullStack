@@ -40,7 +40,6 @@ const CvPostings = forwardRef((props, ref) => {
     }
   };
 
-  // Delete a CV at index
   const handleDelete = (index) => {
     setCvFiles((prev) => {
       const newFiles = prev.filter((_, i) => i !== index);

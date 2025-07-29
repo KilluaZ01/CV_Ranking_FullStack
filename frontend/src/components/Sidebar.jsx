@@ -27,9 +27,9 @@ const Sidebar = () => {
         />
         <NavItem
           icon="mdi:file-document-outline"
-          label="Documents"
-          active={currentPath === "/documents"}
-          onClick={() => navigate("/documents")}
+          label="Records"
+          active={currentPath === "/records"}
+          onClick={() => navigate("/records")}
         />
         <NavItem
           icon="mdi:star-outline"

@@ -36,25 +36,54 @@ You are a professional parser. Given a job description and a resume, return a st
   "jd": {{
     "title": "<job title>",
     "skills": [<required skills>],
-    "education": "<required education>",
+    "education": {{
+       "degree_level": "<degree level, e.g., bachelor's, master's, phd>",
+       "field": "<field of study or specialization>"
+    }},
     "industry": "<industry>"
   }},
   "cvs": [
     {{
       "name": "<Candidate name (or 'Unknown')>",
-      "education": "<highest degree or relevant education>",
+      "education": [
+        {{
+          "degree_level": "<degree level, e.g., bachelor's, master's, phd>",
+          "field": "<Field of study>"
+        }},
+        {{
+          "degree_level": "...",
+          "field": "..."
+        }}
+      ],
       "skills": [<list of skills>],
       "experience": [
         {{
           "title": "<Job Title>",
           "industry": "<Industry>",
           "skills": [<skills used>],
-          "start_year": <start year as integer>
+          "start_year": <start year as integer>,
+          "end_year": 2025 if "2025" in date_string else datetime.now().year,
+          "duration": <end year - start year>
         }}
       ]
     }}
   ]
 }}
+
+Instructions:
+
+- Normalize degree levels into one of these standardized categories: Bachelor's, Master's, PhD, Other.
+  For example:
+    - "Bachelor of Science", "B.Sc.", "Bachelors" -> "Bachelor's"
+    - "Master of Science", "M.Sc.", "Masters" -> "Master's"
+    - "PhD", "Doctorate" -> "PhD"
+    - Anything else -> "Other"
+
+- Extract fields of study precisely, e.g., "Computer Science", "Data Science", "Agriculture".
+
+- For `end_year`, if the job is current or ongoing, use the current year.
+
+- Output valid JSON without comments or code-like syntax.
 
 Follow this format **exactly** and avoid extra explanation or text outside the JSON.
 
@@ -85,7 +114,7 @@ Resume:
         }
 
 import uuid
-
+resume_texts = {}
 def run_pipeline(job_description: str, pdf_paths: list[str]):
     all_cvs = []
     jd_data = {}
@@ -96,6 +125,10 @@ def run_pipeline(job_description: str, pdf_paths: list[str]):
                 file_bytes = f.read()
 
             resume_text = extract_text_from_pdf_file(file_bytes)
+
+            # filename = os.path.basename(pdf_path)                 # ✅ [ADDED] Use filename as key
+            # resume_texts[filename] = resume_text
+
             parsed = analyze_jd_and_resume(job_description, resume_text)
 
             # Extract just the filename for reference
@@ -123,6 +156,8 @@ def run_pipeline(job_description: str, pdf_paths: list[str]):
                 "text": "",
                 "sections": {}
             })
+    # with open("resume_texts.json", "w", encoding="utf-8") as f:
+    #     json.dump(resume_texts, f, ensure_ascii=False, indent=2)
 
     scored_output = generate_scored_output(jd_data, all_cvs)
 

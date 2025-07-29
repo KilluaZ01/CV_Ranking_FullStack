@@ -1,33 +1,24 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-import os, uuid, json, shutil
-from app.services.pipeline import run_pipeline  # You’ll create this
-from fastapi import Depends
+import os, uuid, shutil
 from sqlalchemy.orm import Session as OrmSession
 from fastapi.responses import JSONResponse
+
+from app.services.pipeline import run_pipeline
 from app.models.models import Session as SessionModel
-from app.models.database import SessionLocal, Base, engine
+from app.models.database import SessionLocal, Base, engine, get_db
 
 Base.metadata.create_all(bind=engine)
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 app = FastAPI()
 
 UPLOAD_DIR = "storage/uploads"
-SESSION_DIR = "storage"
-
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # frontend origin
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,6 +27,7 @@ app.add_middleware(
 @app.post("/compare")
 async def compare_upload(
     job_description: str = Form(...),
+    session_name: str = Form(None),
     pdfs: List[UploadFile] = File(...),
     db: OrmSession = Depends(get_db)
 ):
@@ -50,20 +42,11 @@ async def compare_upload(
             shutil.copyfileobj(file.file, f)
         pdf_paths.append(file_path)
 
-    # 🔁 Run pipeline immediately
     results = run_pipeline(job_description, pdf_paths)
 
-    # 💾 Save JSON results
-    with open(os.path.join(SESSION_DIR, f"{session_id}.json"), "w", encoding="utf-8") as f:
-        json.dump({
-            "job_description": job_description,
-            "pdf_paths": pdf_paths,
-            "results": results
-        }, f, ensure_ascii=False, indent=2)
-
-    # 💾 Save metadata to DB
     db_record = SessionModel(
         id=session_id,
+        session_name=session_name,
         job_description=job_description,
         pdf_paths=pdf_paths,
         results=results
@@ -75,11 +58,29 @@ async def compare_upload(
 
 @app.get("/get_results")
 async def get_results(session_id: str, db: OrmSession = Depends(get_db)):
-    db_session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
-    if not db_session:
+    session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    if not db_session.results:
-        raise HTTPException(status_code=404, detail="Results not found for this session")
+    if not session.results:
+        raise HTTPException(status_code=404, detail="No results available for this session")
 
-    return JSONResponse(content={"results": db_session.results})
+    return JSONResponse(content={
+        "session_id": session.id,
+        "session_name": session.session_name,
+        "job_description": session.job_description,
+        "results": session.results
+    })
+
+@app.get("/list_sessions")
+async def list_sessions(db: OrmSession = Depends(get_db)):
+    sessions = db.query(SessionModel).order_by(SessionModel.timestamp.desc()).all()
+    return [
+        {
+            "session_id": s.id,
+            "session_name": s.session_name,
+            "job_description": s.job_description,
+            "created_at": s.timestamp.isoformat() if s.timestamp else None,
+        }
+        for s in sessions
+    ]

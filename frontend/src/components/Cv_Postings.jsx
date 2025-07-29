@@ -44,20 +44,15 @@ const CvPostings = forwardRef((props, ref) => {
   const handleDelete = (index) => {
     setCvFiles((prev) => {
       const newFiles = prev.filter((_, i) => i !== index);
-      // Revoke object URL for the removed file
       URL.revokeObjectURL(prev[index].url);
 
-      // Adjust currentIndex if needed
       if (index === currentIndex) {
         if (index === newFiles.length) {
-          // Deleted last item, move index back
           setCurrentIndex(index - 1 >= 0 ? index - 1 : 0);
         } else {
-          // Show the next item in list (same index)
           setCurrentIndex(index);
         }
       } else if (index < currentIndex) {
-        // If deleting a file before currentIndex, shift index down by 1
         setCurrentIndex((prevIndex) => prevIndex - 1);
       }
       return newFiles;
@@ -100,7 +95,6 @@ const CvPostings = forwardRef((props, ref) => {
 
   return (
     <div className="flex flex-col w-full h-full p-4 bg-[#f1faee]">
-      {/* Header */}
       <div className="relative mb-4 text-center">
         <h1 className="text-2xl md:text-3xl font-bold text-[#1d3557]">
           Choose Document
@@ -108,9 +102,8 @@ const CvPostings = forwardRef((props, ref) => {
       </div>
 
       <div className="flex flex-col w-full h-full rounded-lg shadow-lg bg-[#d0f2ea] p-4 md:p-6">
-        {/* Filename + Delete Button */}
         <div className="flex items-center justify-center mb-4 space-x-2">
-          <h2 className="text-center text-base md:text-lg font-semibold text-[#1d3557] truncate max-w-[85%]">
+          <h2 className="text-center text-base md:text-lg font-semibold text-[#1d3557] truncate max-w-[75%]">
             {currentFile ? currentFile.name : "No CV Selected"}
           </h2>
           {currentFile && (
@@ -125,7 +118,6 @@ const CvPostings = forwardRef((props, ref) => {
           )}
         </div>
 
-        {/* CV Viewer */}
         <div
           className="flex-1 relative rounded-lg overflow-hidden border mb-4"
           style={{ borderColor: "#a8dadc" }}
@@ -179,7 +171,6 @@ const CvPostings = forwardRef((props, ref) => {
           </AnimatePresence>
         </div>
 
-        {/* Navigation Buttons */}
         <div className="flex justify-between items-center mb-4">
           <button
             onClick={goToPrev}
@@ -212,24 +203,25 @@ const CvPostings = forwardRef((props, ref) => {
           </button>
         </div>
 
-        {/* Upload More CVs Button */}
-        <div className="flex justify-center">
-          <button
-            onClick={handleManualUploadClick}
-            className="text-sm text-white bg-[#e63946] hover:bg-[#c72f3f] px-4 py-2 rounded-full font-semibold shadow transition"
-          >
-          Upload More CVs
-          </button>
+        {cvFiles.length > 0 && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={handleManualUploadClick}
+              className="text-sm text-white bg-[#e63946] hover:bg-[#c72f3f] px-4 py-2 rounded-full font-semibold shadow transition"
+            >
+              Upload More CVs
+            </button>
+          </div>
+        )}
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf"
-            multiple
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf"
+          multiple
+          className="hidden"
+          onChange={handleFileUpload}
+        />
       </div>
     </div>
   );

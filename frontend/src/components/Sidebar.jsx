@@ -9,7 +9,6 @@ const Sidebar = () => {
 
   return (
     <aside className="w-64 min-h-screen bg-[#f1faee] shadow-xl p-6 flex flex-col border-r-4 border-[#a8dadc]">
-      {/* User Avatar + Name */}
       <div className="flex items-center mb-8">
         <img
           src="https://i.pravatar.cc/42"
@@ -19,7 +18,6 @@ const Sidebar = () => {
         <span className="font-semibold text-[#1d3557] text-lg">Zidan Rai</span>
       </div>
 
-      {/* Navigation Items */}
       <nav className="flex-1 space-y-3 text-sm">
         <NavItem
           icon="mdi:folder"
@@ -47,7 +45,6 @@ const Sidebar = () => {
         />
       </nav>
 
-      {/* CTA Button */}
       <button
         onClick={() => navigate("/new-project")}
         className="mt-auto py-2 px-4 bg-[#e63946] hover:bg-[#c72f3f] text-white font-semibold rounded-xl shadow transition duration-200"
@@ -55,7 +52,6 @@ const Sidebar = () => {
         + New Project
       </button>
 
-      {/* Footer Links */}
       <div className="mt-6 text-xs text-[#1d3557] space-y-2">
         <p className="hover:text-[#e63946] cursor-pointer transition">How it works</p>
         <p className="hover:text-[#e63946] cursor-pointer transition">Features</p>

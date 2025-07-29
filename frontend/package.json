@@ -12,8 +12,11 @@
   "dependencies": {
     "@iconify/react": "^6.0.0",
     "@tailwindcss/vite": "^4.1.11",
+    "axios": "^1.11.0",
     "framer-motion": "^12.23.6",
+    "prop-types": "^15.8.1",
     "react": "^19.1.0",
+    "react-csv": "^2.2.2",
     "react-dom": "^19.1.0",
     "react-pdf": "^10.0.1",
     "react-router-dom": "^7.6.3",

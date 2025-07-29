@@ -24,6 +24,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+UPLOAD_DIR = "./uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Dummy DB session dependency and models placeholders
+def get_db():
+    # return your db session here
+    pass
+
 @app.post("/compare")
 async def compare_upload(
     job_description: str = Form(...),
@@ -32,12 +40,13 @@ async def compare_upload(
     db: OrmSession = Depends(get_db)
 ):
     session_id = str(uuid.uuid4())
-    session_path = os.path.join(UPLOAD_DIR, session_id)
-    os.makedirs(session_path, exist_ok=True)
+    saved_files = []
+    results = {"scored": []}
 
-    pdf_paths = []
-    for file in pdfs:
-        file_path = os.path.join(session_path, file.filename)
+    # Save uploaded files
+    for pdf in pdfs:
+        cv_id = str(uuid.uuid4())
+        file_path = os.path.join(UPLOAD_DIR, f"{cv_id}.pdf")
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         pdf_paths.append(file_path)
@@ -55,6 +64,7 @@ async def compare_upload(
     db.commit()
 
     return {"session_id": session_id}
+
 
 @app.get("/get_results")
 async def get_results(session_id: str, db: OrmSession = Depends(get_db)):
@@ -84,3 +94,4 @@ async def list_sessions(db: OrmSession = Depends(get_db)):
         }
         for s in sessions
     ]
+

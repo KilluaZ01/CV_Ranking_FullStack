@@ -113,7 +113,6 @@ def evaluate_education(jd_education, cv_education_list):
     return best_score
 
 # ---------- Semantic skill score ----------
-
 def semantic_skill_score(jd_skills, cv_skills):
     if not jd_skills or not cv_skills:
         return 0.0

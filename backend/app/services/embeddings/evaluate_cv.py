@@ -22,7 +22,7 @@ def normalize_title(title):
         "msc": "master",
         "cto": "chief technology officer"
     }
-    title = title.lower()
+    title = (title or "").lower()  # This avoids the AttributeError
     return synonyms.get(title, title)
 
 def normalize_field(field):

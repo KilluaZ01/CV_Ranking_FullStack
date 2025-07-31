@@ -1,21 +1,13 @@
-import React, {
-  useState,
-  useEffect,
-  forwardRef,
-  useImperativeHandle,
-  useRef,
-} from "react";
+import React, { useState, useImperativeHandle, forwardRef, useRef, useEffect } from "react";
 import { Icon } from "@iconify/react";
-import { motion, AnimatePresence } from "framer-motion";
 
-const CvPostings = forwardRef((props, ref) => {
+const Cv_Postings = forwardRef((props, ref) => {
   const [cvFiles, setCvFiles] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
   const fileInputRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
-    getFiles: () => cvFiles.map((f) => f.file),
+    getUploadedFiles: () => cvFiles.map((f) => f.file),
   }));
 
   const handleFileUpload = (e) => {
@@ -25,7 +17,7 @@ const CvPostings = forwardRef((props, ref) => {
 
     const fileData = files.map((file) => ({
       file,
-      url: URL.createObjectURL(file) + "#toolbar=0",
+      url: URL.createObjectURL(file),
       name: file.name,
     }));
 
@@ -64,33 +56,7 @@ const CvPostings = forwardRef((props, ref) => {
     };
   }, [cvFiles]);
 
-  const goToNext = () => {
-    if (currentIndex < cvFiles.length - 1) {
-      setDirection(1);
-      setCurrentIndex(currentIndex + 1);
-    }
-  };
-
-  const goToPrev = () => {
-    if (currentIndex > 0) {
-      setDirection(-1);
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
-
-  const handleManualUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   const currentFile = cvFiles[currentIndex];
-
-  const variants = {
-    enter: (dir) => ({ x: dir > 0 ? 500 : -500, opacity: 0, scale: 0.95 }),
-    center: { x: 0, opacity: 1, scale: 1 },
-    exit: (dir) => ({ x: dir > 0 ? -500 : 500, opacity: 0, scale: 0.95 }),
-  };
 
   return (
     <div className="flex flex-col w-full h-full p-4 bg-[#f1faee]">
@@ -118,112 +84,72 @@ const CvPostings = forwardRef((props, ref) => {
         </div>
 
         <div
-          className="flex-1 relative rounded-lg overflow-hidden border mb-4"
-          style={{ borderColor: "#a8dadc" }}
+          className="flex-1 relative rounded-lg overflow-hidden border border-[#a8dadc] bg-white"
+          style={{ minHeight: "350px" }}
         >
-          <AnimatePresence initial={false} custom={direction}>
-            {currentFile ? (
-              <motion.div
-                key={currentIndex}
-                custom={direction}
-                variants={variants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="absolute w-full h-full"
-              >
-                <iframe
-                  src={currentFile.url}
-                  title={currentFile.name}
-                  className="w-full h-full border-none"
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="no-file"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.3 }}
-                className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-lg"
-                style={{
-                  borderColor: "#a8dadc",
-                  backgroundColor: "#f1faee",
-                }}
-              >
-                <Icon
-                  icon="mdi:file-upload-outline"
-                  className="text-4xl mb-2 text-[#457b9d]"
-                />
-                <p className="text-base font-medium mb-1 text-[#1d3557]">
-                  No CVs Uploaded
-                </p>
-                <button
-                  onClick={handleManualUploadClick}
-                  className="text-sm font-semibold text-[#e63946] hover:underline"
-                >
-                  Upload PDF CVs
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {currentFile ? (
+            <iframe
+              src={currentFile.url}
+              title="Current CV"
+              className="w-full h-full"
+              frameBorder="0"
+            />
+          ) : (
+            <p className="text-center text-gray-500 mt-10">No CV preview available</p>
+          )}
         </div>
 
-        <div className="flex justify-between items-center mb-4">
+        <div className="mt-4 flex justify-center space-x-2">
           <button
-            onClick={goToPrev}
+            onClick={() =>
+              setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev))
+            }
             disabled={currentIndex === 0}
-            className={`p-2 rounded-full transition-all ${
+            className={`px-3 py-1 rounded ${
               currentIndex === 0
-                ? "bg-[#a8dadc] cursor-not-allowed"
-                : "bg-[#457b9d] hover:bg-[#355e7c]"
-            } text-white`}
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-[#e63946] text-white hover:bg-[#d62839]"
+            }`}
           >
-            <Icon icon="mdi:chevron-left" className="text-2xl" />
+            Prev
           </button>
-
-          <span className="text-sm font-medium text-[#1d3557]">
-            {currentFile
-              ? `CV ${currentIndex + 1} of ${cvFiles.length}`
-              : "No CV Selected"}
-          </span>
-
           <button
-            onClick={goToNext}
-            disabled={currentIndex >= cvFiles.length - 1}
-            className={`p-2 rounded-full transition-all ${
-              currentIndex >= cvFiles.length - 1
-                ? "bg-[#a8dadc] cursor-not-allowed"
-                : "bg-[#457b9d] hover:bg-[#355e7c]"
-            } text-white`}
+            onClick={() =>
+              setCurrentIndex((prev) =>
+                prev < cvFiles.length - 1 ? prev + 1 : prev
+              )
+            }
+            disabled={currentIndex === cvFiles.length - 1 || cvFiles.length === 0}
+            className={`px-3 py-1 rounded ${
+              currentIndex === cvFiles.length - 1 || cvFiles.length === 0
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-[#e63946] text-white hover:bg-[#d62839]"
+            }`}
           >
-            <Icon icon="mdi:chevron-right" className="text-2xl" />
+            Next
           </button>
         </div>
 
-        {cvFiles.length > 0 && (
-          <div className="flex justify-center mt-4">
-            <button
-              onClick={handleManualUploadClick}
-              className="text-sm text-white bg-[#e63946] hover:bg-[#c72f3f] px-4 py-2 rounded-full font-semibold shadow transition"
-            >
-              Upload More CVs
-            </button>
-          </div>
-        )}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf"
-          multiple
-          className="hidden"
-          onChange={handleFileUpload}
-        />
+        <div className="mt-4 flex justify-center">
+          <input
+            type="file"
+            ref={fileInputRef}
+            multiple
+            accept="application/pdf"
+            onChange={handleFileUpload}
+            className="hidden"
+            id="file-upload"
+          />
+          <label
+            htmlFor="file-upload"
+            className="cursor-pointer px-6 py-2 bg-[#e63946] hover:bg-[#d62839] text-white rounded-lg"
+          >
+            Upload PDFs
+          </label>
+        </div>
       </div>
     </div>
   );
 });
 
-export default CvPostings;
+export default Cv_Postings;

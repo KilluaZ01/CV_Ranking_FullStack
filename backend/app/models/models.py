@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, DateTime
+from sqlalchemy import Column, String, Text, DateTime, Boolean, Integer
 from sqlalchemy.dialects.sqlite import JSON
 from datetime import datetime
 from app.models.database import Base
@@ -9,6 +9,7 @@ class Session(Base):
     id = Column(String, primary_key=True, index=True)
     session_name = Column(String, unique=True, index=True, nullable=True)
     job_description = Column(Text, nullable=False)
-    pdf_paths = Column(JSON, nullable=False)  # list of filenames
+    pdf_paths = Column(JSON, nullable=False)  
     results = Column(JSON, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    completed = Column(Boolean, default=False, nullable=False)

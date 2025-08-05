@@ -1,152 +1,157 @@
-import React, { useState, useImperativeHandle, forwardRef, useRef, useEffect } from "react";
-import { Icon } from "@iconify/react";
+import React, { useState, useImperativeHandle, forwardRef, useEffect } from "react";
 
 const Cv_Postings = forwardRef((props, ref) => {
   const [cvFiles, setCvFiles] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const fileInputRef = useRef(null);
+  const [pdfUrl, setPdfUrl] = useState(null);
 
   useImperativeHandle(ref, () => ({
-    getUploadedFiles: () => cvFiles.map((f) => f.file),
+    getUploadedFiles: () => cvFiles,
   }));
 
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files).filter(
-      (file) => file.type === "application/pdf"
-    );
-
-    const fileData = files.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-      name: file.name,
-    }));
-
-    setCvFiles((prev) => [...prev, ...fileData]);
-
-    if (cvFiles.length === 0 && fileData.length > 0) {
-      setCurrentIndex(0);
-    }
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setCvFiles(files);
+    setCurrentIndex(0);
   };
 
-  const handleDelete = (index) => {
-    setCvFiles((prev) => {
-      const newFiles = prev.filter((_, i) => i !== index);
-      URL.revokeObjectURL(prev[index].url);
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : cvFiles.length - 1));
+  };
 
-      if (index === currentIndex) {
-        if (index === newFiles.length) {
-          setCurrentIndex(index - 1 >= 0 ? index - 1 : 0);
-        } else {
-          setCurrentIndex(index);
-        }
-      } else if (index < currentIndex) {
-        setCurrentIndex((prevIndex) => prevIndex - 1);
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev < cvFiles.length - 1 ? prev + 1 : 0));
+  };
+
+  const handleDelete = (indexToDelete) => {
+    setCvFiles((files) => {
+      const newFiles = files.filter((_, i) => i !== indexToDelete);
+      if (indexToDelete === currentIndex && newFiles.length > 0) {
+        setCurrentIndex(indexToDelete === 0 ? 0 : indexToDelete - 1);
+      } else if (newFiles.length === 0) {
+        setCurrentIndex(0);
       }
       return newFiles;
     });
   };
 
+  // Create and revoke object URL for the current PDF file
   useEffect(() => {
-    return () => {
-      cvFiles.forEach((f) => URL.revokeObjectURL(f.url));
-    };
-  }, [cvFiles]);
+    if (cvFiles.length === 0) {
+      setPdfUrl(null);
+      return;
+    }
+    const currentFile = cvFiles[currentIndex];
+    const url = URL.createObjectURL(currentFile);
+    setPdfUrl(url);
 
-  const currentFile = cvFiles[currentIndex];
+    return () => {
+      URL.revokeObjectURL(url);
+      setPdfUrl(null);
+    };
+  }, [cvFiles, currentIndex]);
+
+  const baseButtonClasses = `
+    px-5 py-2 rounded-md font-semibold transition
+    focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#83FFE6]
+    disabled:opacity-40 disabled:cursor-not-allowed
+  `;
 
   return (
     <div className="flex flex-col w-full h-full p-4 bg-[#f1faee]">
-      <div className="relative mb-4 text-center">
-        <h1 className="text-2xl md:text-3xl font-bold text-[#1d3557]">
-          Choose Document
-        </h1>
+      <div className="text-center mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-[#1d3557]">CV Postings</h1>
       </div>
 
-      <div className="flex flex-col w-full h-full rounded-lg shadow-lg bg-[#d0f2ea] p-4 md:p-6">
-        <div className="flex items-center justify-center mb-4 space-x-2">
-          <h2 className="text-center text-base md:text-lg font-semibold text-[#1d3557] truncate max-w-[75%]">
-            {currentFile ? currentFile.name : "No CV Selected"}
-          </h2>
-          {currentFile && (
-            <button
-              onClick={() => handleDelete(currentIndex)}
-              className="text-[#e63946] hover:text-[#b5303a] transition"
-              aria-label="Delete current CV"
-              title="Delete this CV"
-            >
-              <Icon icon="mdi:trash-can-outline" className="text-xl" />
-            </button>
-          )}
-        </div>
-
-        <div
-          className="flex-1 relative rounded-lg overflow-hidden border border-[#a8dadc] bg-white"
-          style={{ minHeight: "350px" }}
-        >
-          {currentFile ? (
-            <iframe
-              src={currentFile.url}
-              title="Current CV"
-              className="w-full h-full"
-              frameBorder="0"
-            />
+      <div className="flex flex-col flex-1 rounded-lg shadow-lg bg-[#d0f2ea] p-4 md:p-6 overflow-hidden">
+        {/* Taller preview box with PDF iframe */}
+        <div className="flex-1 border border-[#83FFE6] rounded-lg bg-white max-h-[350px] min-h-[350px] flex flex-col items-center justify-center overflow-hidden mb-4">
+          {cvFiles.length > 0 ? (
+            <>
+              <p className="text-[#1d3557] text-center px-4 truncate max-w-full mb-2">
+                {cvFiles[currentIndex].name}
+              </p>
+              <iframe
+                src={pdfUrl}
+                title="PDF Preview"
+                className="w-full flex-grow rounded"
+                style={{ minHeight: 0 }}
+              />
+            </>
           ) : (
-            <p className="text-center text-gray-500 mt-10">No CV preview available</p>
+            <p className="text-[#457b9d]">No CV uploaded</p>
           )}
         </div>
 
-        <div className="mt-4 flex justify-center space-x-2">
+        {/* Controls row: Previous - Upload - Next */}
+        <div className="flex items-center justify-center gap-6">
           <button
-            onClick={() =>
-              setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev))
-            }
-            disabled={currentIndex === 0}
-            className={`px-3 py-1 rounded ${
-              currentIndex === 0
-                ? "bg-gray-300 cursor-not-allowed"
-                : "bg-[#e63946] text-white hover:bg-[#d62839]"
-            }`}
+            onClick={handlePrev}
+            disabled={cvFiles.length === 0}
+            className={`${baseButtonClasses} border border-[#83FFE6] text-[#457b9d] hover:text-[#1d3557] hover:bg-[#b4f7e7]`}
+            aria-label="Previous CV"
           >
-            Prev
+            Previous
           </button>
+
+          <label
+            htmlFor="upload-cv"
+            className={`
+              cursor-pointer
+              ${baseButtonClasses}
+              bg-[#83FFE6] text-[#2C2C2C]
+              hover:bg-[#6ce0cb]
+              select-none
+              shadow-md
+              hover:shadow-lg
+            `}
+          >
+            Upload CVs
+            <input
+              id="upload-cv"
+              type="file"
+              multiple
+              accept="application/pdf"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </label>
+
           <button
-            onClick={() =>
-              setCurrentIndex((prev) =>
-                prev < cvFiles.length - 1 ? prev + 1 : prev
-              )
-            }
-            disabled={currentIndex === cvFiles.length - 1 || cvFiles.length === 0}
-            className={`px-3 py-1 rounded ${
-              currentIndex === cvFiles.length - 1 || cvFiles.length === 0
-                ? "bg-gray-300 cursor-not-allowed"
-                : "bg-[#e63946] text-white hover:bg-[#d62839]"
-            }`}
+            onClick={handleNext}
+            disabled={cvFiles.length === 0}
+            className={`${baseButtonClasses} border border-[#83FFE6] text-[#457b9d] hover:text-[#1d3557] hover:bg-[#b4f7e7]`}
+            aria-label="Next CV"
           >
             Next
           </button>
         </div>
 
-        <div className="mt-4 flex justify-center">
-          <input
-            type="file"
-            ref={fileInputRef}
-            multiple
-            accept="application/pdf"
-            onChange={handleFileUpload}
-            className="hidden"
-            id="file-upload"
-          />
-          <label
-            htmlFor="file-upload"
-            className="cursor-pointer px-6 py-2 bg-[#e63946] hover:bg-[#d62839] text-white rounded-lg"
-          >
-            Upload PDFs
-          </label>
-        </div>
+        {/* Uploaded files list with delete */}
+        {cvFiles.length > 0 && (
+          <div className="mt-4 max-h-32 overflow-auto bg-white rounded p-2 border border-[#83FFE6]">
+            {cvFiles.map((file, idx) => (
+              <div
+                key={file.name + idx}
+                className="flex justify-between items-center py-1 px-2 hover:bg-[#d0f2ea] rounded"
+              >
+                <span className="truncate max-w-[80%] text-[#1d3557]">{file.name}</span>
+                <button
+                  onClick={() => handleDelete(idx)}
+                  className={`
+                    text-[#457b9d] hover:text-[#1d3557] font-bold
+                    px-3 py-1 rounded
+                    transition
+                    focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#83FFE6]
+                  `}
+                  aria-label={`Delete ${file.name}`}
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

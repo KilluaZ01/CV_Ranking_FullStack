@@ -10,6 +10,9 @@ const Sidebar = () => {
   const navItems = [
     { label: "Home", path: "/", icon: "mdi:home-outline" },
     { label: "Results", path: "/results", icon: "mdi:file-document-outline" },
+    { label: "Archive", path: "/archive", icon: "mdi:archive-outline" },
+    { label: "Documents", path: "/documents", icon: "mdi:file-multiple-outline" },
+    { label: "Important", path: "/important", icon: "mdi:alert-circle-outline" },
   ];
 
   return (

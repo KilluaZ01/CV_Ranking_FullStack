@@ -1,35 +1,51 @@
-import React, { useImperativeHandle, forwardRef, useRef, useState } from "react";
+import React, { useState, useImperativeHandle, forwardRef } from "react";
 
-const Job_Description = forwardRef((props, ref) => {
-  const textareaRef = useRef();
+const Job_Description = forwardRef(({ className }, ref) => {
   const [jobName, setJobName] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
 
   useImperativeHandle(ref, () => ({
-    getJobDescription: () => textareaRef.current?.value || "",
+    getJobDescription: () => jobDescription,
     getJobName: () => jobName,
   }));
 
   return (
-    <div className="flex flex-col w-full h-full p-4 bg-[#f1faee]">
-      <div className="text-center mb-4">
-        <h1 className="text-2xl md:text-3xl font-bold text-[#1d3557]">Job Description</h1>
-      </div>
-
-      <div className="flex flex-col flex-1 rounded-lg shadow-lg bg-[#d0f2ea] p-4 md:p-6 overflow-hidden">
+    <div
+      className={`bg-white rounded-lg shadow-md p-3 border border-[#dceef2] w-full flex flex-col min-h-0 ${className}`}
+    >
+      <div className="mb-2 flex-shrink-0">
+        <label
+          htmlFor="jobName"
+          className="block text-sm font-semibold text-[#1d3557] mb-1"
+        >
+          Job Name
+        </label>
         <input
           type="text"
+          id="jobName"
           value={jobName}
           onChange={(e) => setJobName(e.target.value)}
-          placeholder="Enter job name here..."
-          className="text-center text-lg md:text-xl font-semibold mb-4 text-[#457b9d] bg-[#f1faee] rounded px-3 py-1 outline-none"
+          className="w-full border border-[#a8dadc] rounded-md px-2 py-1.5 text-sm"
+          placeholder="Enter job name"
         />
-        <div className="flex-1 overflow-hidden rounded mb-4">
-          <textarea
-            ref={textareaRef}
-            className="w-full h-full min-h-[150px] md:min-h-[300px] resize-none outline-none bg-[#f1faee] text-sm md:text-base text-[#1d3557] p-3 rounded"
-            placeholder="Enter the full job description here..."
-          />
-        </div>
+      </div>
+
+      <div className="flex-grow min-h-0 flex flex-col">
+        <label
+          htmlFor="jobDescription"
+          className="block text-sm font-semibold text-[#1d3557] mb-1"
+        >
+          Description
+        </label>
+        <textarea
+          id="jobDescription"
+          value={jobDescription}
+          onChange={(e) => setJobDescription(e.target.value)}
+          className="w-full border border-[#a8dadc] rounded-md px-2 py-2 text-sm resize-none flex-grow min-h-0"
+          placeholder="Paste or type the job description here..."
+          rows={10}
+          style={{ height: "100%" }}
+        />
       </div>
     </div>
   );

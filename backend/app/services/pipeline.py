@@ -1,13 +1,42 @@
 import io
 import os
 import json
+import uuid
+import shutil
+from datetime import datetime
+from typing import List
+
 import pdfplumber
 import google.generativeai as genai
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session as DbSession
 
-from app.services.embeddings.json_output import generate_scored_output
+from app.models.database import Base, engine, get_db
+from app.models.models import Session as SessionModel
+from app.services.embeddings.json_output import generate_scored_output  # Your scoring helper
+
+app = FastAPI()
+
+UPLOAD_DIR = "storage/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+app.mount("/pdfs", StaticFiles(directory=UPLOAD_DIR), name="pdfs")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+Base.metadata.create_all(bind=engine)
 
 # Configure Gemini API
-genai.configure(api_key='AIzaSyC48R66gmb13iKVmrlRbT0wY62ysk7d9GM')
+genai.configure(api_key='YOUR_API_KEY_HERE')  # Put your real key here
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 def extract_text_from_pdf_file(file_bytes: bytes) -> str:
@@ -22,8 +51,7 @@ def extract_text_from_pdf_file(file_bytes: bytes) -> str:
             return text.strip()
     except Exception as e:
         print(f"Direct text extraction failed: {e}")
-
-    print("Falling back to OCR for image-based PDF.")  # Optional OCR support can be added
+    print("Falling back to OCR for image-based PDF (not implemented).")
     return text.strip()
 
 import re
@@ -49,10 +77,6 @@ You are a professional parser. Given a job description and a resume, return a st
         {{
           "degree_level": "<degree level, e.g., bachelor's, master's, phd>",
           "field": "<Field of study>"
-        }},
-        {{
-          "degree_level": "...",
-          "field": "..."
         }}
       ],
       "skills": [<list of skills>],
@@ -62,7 +86,7 @@ You are a professional parser. Given a job description and a resume, return a st
           "industry": "<Industry>",
           "skills": [<skills used>],
           "start_year": <start year as integer>,
-          "end_year": 2025 if "2025" in date_string else datetime.now().year,
+          "end_year": 2025 if "2025" in date_string else {datetime.now().year},
           "duration": <end year - start year>
         }}
       ]
@@ -73,16 +97,8 @@ You are a professional parser. Given a job description and a resume, return a st
 Instructions:
 
 - Normalize degree levels into one of these standardized categories: Bachelor's, Master's, PhD, Other.
-  For example:
-    - "Bachelor of Science", "B.Sc.", "Bachelors" -> "Bachelor's"
-    - "Master of Science", "M.Sc.", "Masters" -> "Master's"
-    - "PhD", "Doctorate" -> "PhD"
-    - Anything else -> "Other"
-
 - Extract fields of study precisely, e.g., "Computer Science", "Data Science", "Agriculture".
-
 - For `end_year`, if the job is current or ongoing, use the current year.
-
 - Output valid JSON without comments or code-like syntax.
 
 Follow this format **exactly** and avoid extra explanation or text outside the JSON.
@@ -96,26 +112,19 @@ Resume:
     response = model.generate_content(prompt)
     response_text = response.text.strip()
 
-    # Clean markdown or other wrappers from the response
-    # Remove ```json
-    cleaned_response = re.sub(r'^```json\s*|\s*```$', '', response_text, flags=re.MULTILINE)
-    cleaned_response = cleaned_response.strip()
+    cleaned_response = re.sub(r'^```json\s*|\s*```$', '', response_text, flags=re.MULTILINE).strip()
 
     try:
-        # Parse the cleaned response
         parsed = json.loads(cleaned_response)
         return parsed
     except json.JSONDecodeError as e:
-        # Log the error and return a fallback structure
         print(f"JSON parsing failed: {e}")
         return {
             "jd": {},
             "cvs": [{"name": "Unknown", "error": f"JSON parsing failed: {e}", "text": resume_text, "sections": {}}]
         }
 
-import uuid
-resume_texts = {}
-def run_pipeline(job_description: str, pdf_paths: list[str]):
+def run_pipeline(job_description: str, pdf_paths: List[str], session_id: str):
     all_cvs = []
     jd_data = {}
 
@@ -125,21 +134,14 @@ def run_pipeline(job_description: str, pdf_paths: list[str]):
                 file_bytes = f.read()
 
             resume_text = extract_text_from_pdf_file(file_bytes)
-
-            # filename = os.path.basename(pdf_path)                 # ✅ [ADDED] Use filename as key
-            # resume_texts[filename] = resume_text
-
             parsed = analyze_jd_and_resume(job_description, resume_text)
 
-            # Extract just the filename for reference
             base_filename = os.path.basename(pdf_path)
-            unique_id = str(uuid.uuid4())  # Or use a hash of the resume_text
+            unique_id = str(uuid.uuid4())
 
-            # Capture JD once (from first valid response)
             if not jd_data and "jd" in parsed and parsed["jd"]:
                 jd_data = parsed["jd"]
 
-            # Add unique ID to each CV entry
             if "cvs" in parsed:
                 for cv in parsed["cvs"]:
                     cv["cv_id"] = f"{base_filename}_{unique_id}"
@@ -156,16 +158,58 @@ def run_pipeline(job_description: str, pdf_paths: list[str]):
                 "text": "",
                 "sections": {}
             })
-    # with open("resume_texts.json", "w", encoding="utf-8") as f:
-    #     json.dump(resume_texts, f, ensure_ascii=False, indent=2)
 
     scored_output = generate_scored_output(jd_data, all_cvs)
 
-    return {
-        "jd": jd_data,
-        "cvs": all_cvs,
-        "scored": [
-            {**score, "cv_id": cv.get("cv_id", "unknown")}  # Add cv_id to scored output
-            for score, cv in zip(scored_output, all_cvs)
-        ]
-    }
+    return [
+        {
+            **score,
+            "cv_id": cv.get("cv_id", "unknown"),
+            "name": cv.get("name", "Unknown"),
+            "accepted": False,
+            "rejected": False,
+            "accepted_date": None,
+            "rejected_date": None,
+            "pdf_url": f"http://localhost:8000/get_pdf/{session_id}/{os.path.basename(cv.get('cv_id',''))}"
+        }
+        for score, cv in zip(scored_output, all_cvs)
+    ]
+
+
+@app.post("/compare")
+async def compare(
+    job_description: str = Form(...),
+    session_name: str = Form(None),
+    pdfs: List[UploadFile] = File(...),
+    db: DbSession = Depends(get_db),
+):
+    session_id = str(uuid.uuid4())
+    session_path = os.path.join(UPLOAD_DIR, session_id)
+    os.makedirs(session_path, exist_ok=True)
+
+    pdf_filenames = []
+    for file in pdfs:
+        file_location = os.path.join(session_path, file.filename)
+        with open(file_location, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        pdf_filenames.append(file.filename)
+
+    full_pdf_paths = [os.path.join(session_path, f) for f in pdf_filenames]
+    results = run_pipeline(job_description, full_pdf_paths, session_id)
+
+    db_session = SessionModel(
+        id=session_id,
+        session_name=session_name,
+        job_description=job_description,
+        pdf_paths=pdf_filenames,
+        results=results,
+        timestamp=datetime.utcnow(),
+        completed=False
+    )
+    db.add(db_session)
+    db.commit()
+
+    return {"session_id": session_id}
+
+# ... keep all your other endpoints unchanged ...
+

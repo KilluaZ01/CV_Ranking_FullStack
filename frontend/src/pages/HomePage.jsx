@@ -12,7 +12,7 @@ const HomePage = () => {
 
   const handleCompare = async () => {
     const jdText = jobRef.current.getJobDescription();
-    const jobName = jobRef.current.getJobName(); // <-- get job name here
+    const jobName = jobRef.current.getJobName();
     const files = cvRef.current.getUploadedFiles();
 
     if (!jdText || !jobName || files.length === 0 || !comparisonDate) {
@@ -22,7 +22,7 @@ const HomePage = () => {
 
     const formData = new FormData();
     formData.append("job_description", jdText);
-    formData.append("session_name", jobName);  // <-- send job name as session_name
+    formData.append("session_name", jobName);
     files.forEach((file) => formData.append("pdfs", file));
 
     try {
@@ -44,15 +44,15 @@ const HomePage = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#f1faee] text-[#2C2C2C]">
+    <div className="flex h-screen bg-gradient-to-br from-indigo-50 to-cyan-50 text-cyan-900 overflow-hidden">
       <Sidebar />
 
-      <div className="flex-1 flex flex-col p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col p-4 overflow-hidden">
         {/* Header + Date */}
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">CV Comparison Tool</h1>
+        <div className="flex justify-between items-center mb-4 border-b pb-2 border-cyan-200 select-none">
+          <h1 className="text-3xl font-extrabold leading-tight">CV Comparison Tool</h1>
           <div>
-            <label htmlFor="comparisonDate" className="text-sm block mb-1">
+            <label htmlFor="comparisonDate" className="text-sm font-semibold block mb-1">
               Comparison Date
             </label>
             <input
@@ -60,7 +60,7 @@ const HomePage = () => {
               type="date"
               value={comparisonDate}
               onChange={(e) => setComparisonDate(e.target.value)}
-              className="px-3 py-1 border border-[#83FFE6] rounded-md"
+              className="px-3 py-2 border border-cyan-300 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
             />
           </div>
         </div>
@@ -68,13 +68,19 @@ const HomePage = () => {
         {/* Content panels */}
         <div className="flex flex-1 gap-4 overflow-hidden">
           {/* Job Description container */}
-          <div className="w-1/2 h-full overflow-auto px-2">
-            <Job_Description ref={jobRef} />
+          <div className="w-1/2 h-full bg-white rounded-2xl shadow-lg p-4 border border-cyan-200 flex flex-col min-h-0">
+            <h2 className="text-lg font-semibold mb-2 border-b pb-2 border-cyan-300 select-none">
+              📝 Job Description
+            </h2>
+            <Job_Description ref={jobRef} className="flex-grow min-h-0" />
           </div>
 
           {/* CV Postings */}
-          <div className="w-1/2 flex flex-col h-full">
-            <Cv_Postings ref={cvRef} />
+          <div className="w-1/2 h-full bg-white rounded-2xl shadow-lg p-4 border border-cyan-200 flex flex-col min-h-0">
+            <h2 className="text-lg font-semibold mb-2 border-b pb-2 border-cyan-300 select-none">
+              📄 Uploaded CVs
+            </h2>
+            <Cv_Postings ref={cvRef} className="flex-grow min-h-0" />
           </div>
         </div>
 
@@ -82,9 +88,9 @@ const HomePage = () => {
         <div className="mt-4 flex justify-center">
           <button
             onClick={handleCompare}
-            className="bg-[#FF5F5F] hover:bg-[#e04d4d] text-white font-semibold px-8 py-3 rounded-xl shadow transition"
+            className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold px-8 py-3 rounded-2xl shadow-xl transition duration-300 select-none"
           >
-            Compare
+            🔍 Compare Now
           </button>
         </div>
       </div>

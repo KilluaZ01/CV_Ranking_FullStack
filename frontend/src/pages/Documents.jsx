@@ -1,84 +1,175 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 
 const Documents = () => {
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState([]);
+  const [previewDoc, setPreviewDoc] = useState(null);
+
+  const readFileContent = (file) =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve("Could not read file content.");
+      reader.readAsText(file);
+    });
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    const docsWithContent = await Promise.all(
+      files.map(async (file) => {
+        const content =
+          file.type.startsWith("text/") || file.name.endsWith(".json")
+            ? await readFileContent(file)
+            : null;
+
+        return {
+          name: file.name,
+          type: file.type || "N/A",
+          content: content,
+          previewUrl: URL.createObjectURL(file),
+        };
+      })
+    );
+    const updatedDocs = [...documents, ...docsWithContent];
+    setDocuments(updatedDocs);
+    localStorage.setItem("uploadedDocuments", JSON.stringify(updatedDocs));
+  };
+
+  const handleDelete = (index) => {
+    const updated = [...documents];
+    updated.splice(index, 1);
+    setDocuments(updated);
+    localStorage.setItem("uploadedDocuments", JSON.stringify(updated));
+    if (previewDoc?.index === index) {
+      setPreviewDoc(null);
+    }
+  };
 
   useEffect(() => {
-    fetch("http://localhost:8000/documents")
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        setHistory(data || []);
-      })
-      .catch((err) => {
-        console.error("Failed to load comparison history:", err);
-        setHistory([]);
-      })
-      .finally(() => setLoading(false));
+    const stored = localStorage.getItem("uploadedDocuments");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setDocuments(parsed);
+      } catch (err) {
+        console.error("Invalid localStorage content", err);
+      }
+    }
   }, []);
 
   return (
-    <div className="flex h-screen bg-[#f1faee] font-sans overflow-hidden">
+    <div className="flex h-screen bg-gradient-to-br from-indigo-50 to-cyan-50 text-cyan-900">
       <Sidebar />
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        <h1 className="text-3xl font-bold text-[#1d3557] mb-6">
-          Comparison History
-        </h1>
+      <main className="flex-1 p-8 overflow-auto relative">
+        <h2 className="text-4xl font-extrabold mb-8 select-none">📄 Documents</h2>
 
-        {loading ? (
-          <p className="text-[#457b9d]">Loading history...</p>
-        ) : history.length === 0 ? (
-          <p className="text-[#e63946]">No comparison history found.</p>
+        <div className="mb-8">
+          <label className="block mb-3 text-cyan-900 font-semibold select-none">
+            Upload Documents
+          </label>
+          <input
+            type="file"
+            multiple
+            onChange={handleFileUpload}
+            className="block w-full text-sm text-cyan-900
+              file:mr-4 file:py-2 file:px-5 file:rounded-2xl file:border-0
+              file:text-sm file:font-semibold file:bg-cyan-300 file:text-cyan-900
+              hover:file:bg-cyan-400 cursor-pointer transition-colors"
+          />
+        </div>
+
+        {documents.length === 0 ? (
+          <p className="text-center text-cyan-500 italic mt-24 select-none">
+            No documents uploaded.
+          </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {history.map((session) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {documents.map((doc, index) => (
               <div
-                key={session.session_id}
-                className="bg-white border border-[#a8dadc] rounded-xl shadow-lg p-6 hover:shadow-xl transition"
+                key={index}
+                onClick={() => setPreviewDoc({ ...doc, index })}
+                className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between
+                  hover:shadow-2xl transition-shadow cursor-pointer select-none"
               >
-                <h2 className="text-xl font-semibold text-[#1d3557] mb-1">
-                  {session.jd_name || "Unnamed JD"}
-                </h2>
-                <p className="text-sm text-[#457b9d] mb-4">
-                  {session.comparison_date
-                    ? new Date(session.comparison_date).toLocaleString()
-                    : "Date not available"}
-                </p>
-
-                <div className="flex justify-between text-sm font-medium text-[#1d3557]">
-                  <div className="text-center">
-                    <p className="text-lg">{session.total_cvs ?? 0}</p>
-                    <p className="text-[#457b9d]">Total CVs</p>
+                <div>
+                  <h3
+                    title={doc.name}
+                    className="text-xl font-semibold text-cyan-900 mb-4 truncate"
+                  >
+                    {doc.name}
+                  </h3>
+                  <div className="text-sm text-cyan-700 mb-6 whitespace-pre-wrap h-28 overflow-hidden leading-relaxed">
+                    {doc.content
+                      ? doc.content.slice(0, 150) +
+                        (doc.content.length > 150 ? "..." : "")
+                      : "Preview not available"}
                   </div>
-                  <div className="text-center">
-                    <p className="text-lg text-emerald-700">
-                      {session.accepted_cvs ?? 0}
-                    </p>
-                    <p className="text-[#457b9d]">Accepted</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg text-red-600">
-                      {session.rejected_cvs ?? 0}
-                    </p>
-                    <p className="text-[#457b9d]">Rejected</p>
-                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(index);
+                    }}
+                    className="text-red-600 hover:text-red-800 font-semibold"
+                    title="Delete document"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Optional: JSON Viewer for Debugging */}
-        {!loading && history.length > 0 && (
-          <pre className="mt-8 p-4 bg-[#f1faee] border rounded text-xs overflow-auto max-h-64">
-            {JSON.stringify(history, null, 2)}
-          </pre>
+        {previewDoc && (
+          <div
+            className="fixed inset-0 z-40 flex items-start justify-center bg-transparent"
+            onClick={() => setPreviewDoc(null)}
+          >
+            <div
+              className="relative bg-white p-8 mt-16 rounded-3xl shadow-2xl w-[90%] max-w-5xl max-h-[90vh] overflow-auto border border-cyan-300"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="absolute top-6 right-6 text-cyan-700 hover:text-cyan-900 font-bold text-3xl"
+                onClick={() => setPreviewDoc(null)}
+                aria-label="Close preview"
+              >
+                &times;
+              </button>
+
+              <h3 className="text-3xl font-bold text-cyan-900 mb-6 truncate select-none">
+                {previewDoc.name}
+              </h3>
+
+              {previewDoc.type.startsWith("text/") && previewDoc.content ? (
+                <pre className="whitespace-pre-wrap text-cyan-900 bg-cyan-50 p-6 rounded-xl shadow-inner select-text">
+                  {previewDoc.content}
+                </pre>
+              ) : previewDoc.type === "application/pdf" &&
+                previewDoc.previewUrl ? (
+                <iframe
+                  src={previewDoc.previewUrl}
+                  className="w-full h-[70vh] border rounded-xl shadow-lg"
+                  title={`PDF preview of ${previewDoc.name}`}
+                />
+              ) : previewDoc.type.startsWith("image/") &&
+                previewDoc.previewUrl ? (
+                <img
+                  src={previewDoc.previewUrl}
+                  alt={previewDoc.name}
+                  className="max-w-full max-h-[70vh] mx-auto rounded-xl shadow-lg"
+                />
+              ) : (
+                <p className="text-center text-cyan-500 italic mt-12 select-none">
+                  Preview not available for this file type.
+                </p>
+              )}
+            </div>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

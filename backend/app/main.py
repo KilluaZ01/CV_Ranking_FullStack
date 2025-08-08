@@ -1,13 +1,17 @@
+import io
+import os
+import json
+import uuid
+import shutil
+from datetime import datetime
+from typing import List
+
+import pdfplumber
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session as DbSession
-from typing import List
-import os
-import uuid
-import shutil
-from datetime import datetime
 
 from app.models.database import Base, engine, get_db
 from app.models.models import Session as SessionModel
@@ -17,10 +21,9 @@ app = FastAPI()
 UPLOAD_DIR = "storage/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Mount static files for serving PDFs
+# Serve PDFs statically
 app.mount("/pdfs", StaticFiles(directory=UPLOAD_DIR), name="pdfs")
 
-# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,10 +32,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create DB tables
 Base.metadata.create_all(bind=engine)
 
-# Pipeline function
+# Dummy pipeline (replace with real model later)
 def run_pipeline(job_desc: str, pdf_paths: List[str], session_id: str) -> List[dict]:
     results = []
     for i, path in enumerate(pdf_paths):
@@ -51,11 +53,10 @@ def run_pipeline(job_desc: str, pdf_paths: List[str], session_id: str) -> List[d
         })
     return results
 
-# Compare endpoint
 @app.post("/compare")
 async def compare(
     job_description: str = Form(...),
-    session_name: str = Form(None),  # Use session_name for job name
+    session_name: str = Form(None),
     pdfs: List[UploadFile] = File(...),
     db: DbSession = Depends(get_db),
 ):
@@ -75,7 +76,7 @@ async def compare(
 
     db_session = SessionModel(
         id=session_id,
-        session_name=session_name,  # Store job name here
+        session_name=session_name,
         job_description=job_description,
         pdf_paths=pdf_filenames,
         results=results,
@@ -87,7 +88,6 @@ async def compare(
 
     return {"session_id": session_id}
 
-# Get results
 @app.get("/get_results")
 async def get_results(session_id: str, db: DbSession = Depends(get_db)):
     session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
@@ -107,7 +107,6 @@ async def get_results(session_id: str, db: DbSession = Depends(get_db)):
         "completed": session.completed
     })
 
-# Serve PDFs directly
 @app.get("/get_pdf/{session_id}/{filename}")
 async def get_pdf(session_id: str, filename: str):
     folder_path = os.path.join(UPLOAD_DIR, session_id)
@@ -118,7 +117,8 @@ async def get_pdf(session_id: str, filename: str):
 
     return FileResponse(path=file_path, media_type="application/pdf")
 
-# Accept CV
+# Commented out accept_cv endpoint
+'''
 @app.post("/accept_cv")
 async def accept_cv(session_id: str = Form(...), cv_id: str = Form(...), db: DbSession = Depends(get_db)):
     session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
@@ -131,16 +131,20 @@ async def accept_cv(session_id: str = Form(...), cv_id: str = Form(...), db: DbS
             r["accepted"] = True
             r["rejected"] = False
             r["accepted_date"] = datetime.utcnow().isoformat()
+            r["rejected_date"] = None
             found = True
             break
+
     if not found:
         raise HTTPException(status_code=404, detail="CV not found")
 
-    session.results = session.results
+    db.add(session)
     db.commit()
     return {"message": "CV accepted"}
+'''
 
-# Reject CV
+# Commented out reject_cv endpoint
+'''
 @app.post("/reject_cv")
 async def reject_cv(session_id: str = Form(...), cv_id: str = Form(...), db: DbSession = Depends(get_db)):
     session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
@@ -153,20 +157,22 @@ async def reject_cv(session_id: str = Form(...), cv_id: str = Form(...), db: DbS
             r["rejected"] = True
             r["accepted"] = False
             r["rejected_date"] = datetime.utcnow().isoformat()
+            r["accepted_date"] = None
             found = True
             break
+
     if not found:
         raise HTTPException(status_code=404, detail="CV not found")
 
-    session.results = session.results
+    db.add(session)
     db.commit()
     return {"message": "CV rejected"}
+'''
 
-# Get all comparison history
 @app.get("/get_comparison_history")
 async def get_comparison_history(db: DbSession = Depends(get_db)):
     sessions = db.query(SessionModel).order_by(SessionModel.timestamp.desc()).all()
-    
+
     history = []
     for s in sessions:
         history.append({
@@ -179,7 +185,6 @@ async def get_comparison_history(db: DbSession = Depends(get_db)):
         })
     return history
 
-# Mark session complete
 @app.post("/complete_session")
 async def complete_session(session_id: str = Form(...), db: DbSession = Depends(get_db)):
     session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
@@ -187,5 +192,6 @@ async def complete_session(session_id: str = Form(...), db: DbSession = Depends(
         raise HTTPException(status_code=404, detail="Session not found")
 
     session.completed = True
+    db.add(session)
     db.commit()
     return {"message": "Session marked as complete"}

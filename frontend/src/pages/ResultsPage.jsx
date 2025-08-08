@@ -1,75 +1,69 @@
+// src/pages/ResultsPage.js
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import { useLocation } from "react-router-dom";
 
-const ResultsPage = () => {
+const getColor = (score) => {
+  if (score <= 50) return "text-red-600";
+  if (score <= 60) return "text-orange-500";
+  if (score <= 70) return "text-yellow-600";
+  if (score <= 80) return "text-green-600";
+  return "text-teal-700";
+};
+
+const ResultsPage = ({ onDataUpdate }) => {
   const location = useLocation();
-  const sessionId = location.state?.session_id;
+  const sessionIdFromNav = location.state?.session_id || null;
+
+  const [currentSessionId, setCurrentSessionId] = useState(sessionIdFromNav);
   const [results, setResults] = useState(null);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isCompleting, setIsCompleting] = useState(false);
 
+  const [showArchive, setShowArchive] = useState(false);
+  const [archive, setArchive] = useState([]);
+  const [loadingArchive, setLoadingArchive] = useState(false);
+  const [archiveError, setArchiveError] = useState(null);
+
   useEffect(() => {
+    if (currentSessionId) loadResults(currentSessionId);
+  }, [currentSessionId]);
+
+  const loadResults = async (sessionId) => {
     if (!sessionId) return;
-    fetch(`http://localhost:8000/get_results?session_id=${sessionId}`)
-      .then((res) => res.json())
-      .then((data) => setResults(data))
-      .catch((err) => console.error(err));
-  }, [sessionId]);
+    setResults(null);
+    setPdfUrl(null);
+    try {
+      const res = await fetch(`http://localhost:8000/get_results?session_id=${sessionId}`);
+      if (!res.ok) throw new Error("Failed to fetch results");
+      const data = await res.json();
+      setResults(data);
+      setCurrentSessionId(sessionId);
+    } catch (error) {
+      console.error("Error loading results:", error);
+      alert("Failed to load results. Please try again.");
+    }
+  };
+
+  const loadArchive = async () => {
+    setLoadingArchive(true);
+    setArchiveError(null);
+    try {
+      const res = await fetch("http://localhost:8000/get_comparison_history");
+      if (!res.ok) throw new Error("Failed to fetch archive");
+      const data = await res.json();
+      setArchive(data);
+    } catch (error) {
+      setArchiveError(error.message);
+    } finally {
+      setLoadingArchive(false);
+    }
+  };
 
   const fetchPdf = (sessionId, filename) => {
     setPdfUrl(`http://localhost:8000/get_pdf/${sessionId}/${filename}`);
   };
 
-  const getColor = (score) => {
-    if (score <= 50) return "text-[#e63946]";
-    if (score <= 60) return "text-orange-500";
-    if (score <= 70) return "text-lime-500";
-    if (score <= 80) return "text-green-500";
-    return "text-emerald-600";
-  };
-
-  const handleDecision = async (index, decision) => {
-    if (!results) return;
-
-    const cv = results.results.scored[index];
-
-    const url =
-      decision === "accept"
-        ? "http://localhost:8000/accept_cv"
-        : "http://localhost:8000/reject_cv";
-
-    const formData = new FormData();
-    formData.append("session_id", results.session_id);
-    formData.append("cv_id", cv.cv_id || cv.filename);
-
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update CV status");
-      }
-
-      const updatedResults = { ...results };
-      if (decision === "accept") {
-        updatedResults.results.scored[index].accepted = true;
-        updatedResults.results.scored[index].rejected = false;
-      } else {
-        updatedResults.results.scored[index].rejected = true;
-        updatedResults.results.scored[index].accepted = false;
-      }
-
-      setResults(updatedResults);
-    } catch (error) {
-      console.error(error);
-      alert("Error updating CV status. Please try again.");
-    }
-  };
-
-  // New handler for "Complete" button
   const handleComplete = async () => {
     if (!results) return;
     setIsCompleting(true);
@@ -83,12 +77,11 @@ const ResultsPage = () => {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to complete session");
-      }
+      if (!response.ok) throw new Error("Failed to complete session");
 
       alert("Session marked as complete.");
-      // Optionally you can refresh or update the UI here
+
+      if (onDataUpdate) onDataUpdate();
     } catch (error) {
       console.error(error);
       alert("Error completing session. Please try again.");
@@ -97,89 +90,123 @@ const ResultsPage = () => {
     }
   };
 
+  const toggleShowArchive = () => {
+    if (!showArchive && archive.length === 0) loadArchive();
+    setShowArchive((v) => !v);
+  };
+
   return (
-    <div className="flex h-screen bg-[#f1faee] overflow-hidden">
+    <div className="flex h-screen bg-gradient-to-br from-indigo-50 to-cyan-50 overflow-hidden">
       <Sidebar />
 
-      <div className="flex-1 p-6 flex flex-col h-full">
-        {/* Larger container box for both sections */}
-        <div className="flex border border-[#a8dadc] rounded-md overflow-hidden h-full">
-          {/* Comparison Result - scrollable */}
-          <div className="w-1/2 p-6 overflow-y-auto max-h-full flex flex-col">
-            <h2 className="text-2xl font-semibold text-[#1d3557] mb-4">Comparison Result</h2>
+      <div className="flex-1 p-4 flex flex-col h-full space-y-3">
+        {/* Archive Toggle */}
+        <div className="w-full sm:w-1/2 relative">
+          <button
+            onClick={toggleShowArchive}
+            className="w-full bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-500 hover:to-cyan-500 text-white font-semibold py-2.5 rounded-lg shadow-md transition duration-300 focus:outline-none focus:ring-4 focus:ring-cyan-300 select-none text-sm"
+          >
+            {showArchive ? "Hide Previous Results" : "Previous Results"}
+          </button>
+
+          {showArchive && (
+            <div className="absolute top-full left-0 w-full max-h-52 overflow-auto border border-cyan-300 rounded-lg p-3 bg-white shadow-lg z-30 mt-2">
+              {loadingArchive && <p className="text-gray-500 italic text-xs">Loading archives...</p>}
+              {archiveError && (
+                <p className="text-red-600 font-semibold text-sm">
+                  Error loading archive: {archiveError}
+                </p>
+              )}
+              {!loadingArchive && !archiveError && archive.length === 0 && (
+                <p className="text-gray-500 italic text-xs">No archive sessions found.</p>
+              )}
+              {!loadingArchive &&
+                !archiveError &&
+                archive.map((session) => (
+                  <button
+                    key={session.session_id}
+                    onClick={() => {
+                      loadResults(session.session_id);
+                      setShowArchive(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 rounded-md hover:bg-cyan-100 transition duration-200 select-none text-sm"
+                  >
+                    <div className="font-semibold text-cyan-800 truncate">{session.session_name || "(Unnamed Session)"}</div>
+                    <div className="text-xs text-gray-400">{new Date(session.created_at).toLocaleString()}</div>
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Main Results & Preview */}
+        <div className="flex flex-1 border border-cyan-300 rounded-2xl overflow-hidden shadow-lg bg-white">
+          {/* Results List */}
+          <div className="w-1/2 p-4 flex flex-col h-full overflow-y-auto space-y-3">
+            <h2 className="text-2xl font-extrabold text-cyan-900 border-b border-cyan-300 pb-2 select-none">
+              Comparison Result
+            </h2>
+
             {results ? (
-              <>
-                <p className="text-[#457b9d] mb-4">Comparison Date: {results.created_at}</p>
-                <div className="space-y-3 flex-grow overflow-y-auto">
-                  {results.results.scored.map((cv, idx) => (
-                    <div
-                      key={idx}
-                      className="border border-[#a8dadc] rounded-xl shadow p-4 bg-white hover:bg-[#f1faee]"
-                    >
-                      <div
-                        className="cursor-pointer"
-                        onClick={() => fetchPdf(results.session_id, cv.filename)}
-                      >
-                        <h3 className="font-bold text-lg text-[#1d3557]">{cv.name}</h3>
-                        <p className={`text-sm ${getColor(cv.total_score * 100)}`}>
-                          Match Score: {Math.round(cv.total_score * 100)}%
-                        </p>
-                        <p className="text-xs italic text-gray-500 mb-2">
-                          Status:{" "}
-                          {cv.accepted
-                            ? "Accepted"
-                            : cv.rejected
-                            ? "Rejected"
-                            : "Pending Decision"}
-                        </p>
-                      </div>
-
-                      {(!cv.accepted && !cv.rejected) && (
-                        <div className="flex gap-4">
-                          <button
-                            onClick={() => handleDecision(idx, "accept")}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            onClick={() => handleDecision(idx, "reject")}
-                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleComplete}
-                  disabled={isCompleting}
-                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded self-center"
-                >
-                  {isCompleting ? "Completing..." : "Complete"}
-                </button>
-              </>
+              results.results.scored.length > 0 ? (
+                results.results.scored.map((cv, idx) => (
+                  <div
+                    key={idx}
+                    className="border border-cyan-300 rounded-lg shadow-sm p-3 bg-cyan-50 hover:bg-cyan-100 transition cursor-pointer select-none text-sm"
+                    onClick={() => fetchPdf(results.session_id, cv.filename)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) =>
+                      (e.key === "Enter" || e.key === " ") &&
+                      fetchPdf(results.session_id, cv.filename)
+                    }
+                  >
+                    <h3 className="font-semibold text-lg text-cyan-900 mb-1 truncate">{cv.name}</h3>
+                    <p className={`text-base font-semibold ${getColor(cv.total_score * 100)} mb-0`}>
+                      Match Score: {Math.round(cv.total_score * 100)}%
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-400 italic select-none text-sm">No CVs found in results.</p>
+              )
             ) : (
-              <p>Loading...</p>
+              <p className="text-gray-500 text-center mt-16 text-base font-medium select-none">Loading...</p>
             )}
           </div>
 
           {/* CV Preview */}
-          <div className="w-1/2 p-6 bg-white border-l border-[#a8dadc] rounded-tr-md rounded-br-md flex flex-col">
-            <h2 className="text-xl mb-4 font-semibold text-[#1d3557]">CV Preview</h2>
-            {pdfUrl ? (
-              <iframe
-                src={pdfUrl}
-                className="w-full flex-grow border border-[#a8dadc] rounded-md"
-                title="CV Preview"
-              />
-            ) : (
-              <p className="text-gray-500">Select a CV to preview.</p>
-            )}
+          <div className="w-1/2 p-4 flex flex-col bg-white shadow-inner border-l border-cyan-300 overflow-hidden rounded-r-2xl">
+            <h2 className="text-xl mb-4 font-semibold text-cyan-900 border-b border-cyan-300 pb-2 select-none">
+              CV Preview
+            </h2>
+            <div className="flex-grow overflow-auto rounded-md">
+              {pdfUrl ? (
+                <iframe
+                  src={pdfUrl}
+                  className="w-full h-full border border-cyan-300 rounded-md shadow-md"
+                  title="CV Preview"
+                />
+              ) : (
+                <p className="text-gray-400 text-center mt-16 italic select-none text-sm">
+                  Select a CV to preview.
+                </p>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* Complete Button */}
+        <div className="border-t border-cyan-300 pt-4 flex justify-center">
+          <button
+            onClick={handleComplete}
+            disabled={isCompleting}
+            className={`px-8 py-3 rounded-xl shadow-lg text-white font-semibold transition duration-300 select-none text-sm ${
+              isCompleting ? "bg-cyan-300 cursor-not-allowed" : "bg-cyan-600 hover:bg-cyan-700"
+            }`}
+          >
+            {isCompleting ? "Completing..." : "Complete"}
+          </button>
         </div>
       </div>
     </div>
